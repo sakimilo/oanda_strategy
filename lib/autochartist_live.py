@@ -151,11 +151,11 @@ def make_datatype(df, c_int=True, c_object=True, c_float=True, c_time=True):
 if __name__ == '__main__':
 
     config              = json.load(open('./config/oanda_config.json'))
-    accountID           = config['practice_login']['account_id']
-    access_token        = config['practice_login']['access_token']
+    accountID           = config['live_login']['account_id']
+    access_token        = config['live_login']['access_token']
     machine_utc_time    = config['machine']['utc_time']
 
-    client              = API(access_token=access_token, environment="practice")
+    client              = API(access_token=access_token, environment="live")
     count               = 0
     max_iter            = 1000
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
                 break
 
             count              += 1
-            hist_signals        = pd.read_csv('./results/signals.csv')
+            hist_signals        = pd.read_csv('./results/signals_live.csv')
             hist_signals        = hist_signals[[c for c in hist_signals.columns if c not in \
                                                                 ['curr_ask', 'curr_bid', 'pred']]]
             hist_signals        = make_datatype(hist_signals)
@@ -186,7 +186,7 @@ if __name__ == '__main__':
             signals['curr_bid'] = signals['instrument'].map(instrument_to_bid)
             signals['pred']     = signals.apply(lambda x: predict_price(x), axis=1)
 
-            signals.to_csv('./results/signals.csv', index=False)
+            signals.to_csv('./results/signals_live.csv', index=False)
             print('{}) finished fetching signals, shape: {}'.format(count, signals.shape))
 
             time.sleep(60 * 5)
@@ -198,7 +198,7 @@ if __name__ == '__main__':
             else:
                 current_time    = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            with open("./results/errors.log", "a") as LOG:
+            with open("./results/errors_live.log", "a") as LOG:
                 LOG.write("{}, V20Error: {}\n".format(current_time, e))
 
     print('done')
