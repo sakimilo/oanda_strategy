@@ -7,6 +7,7 @@ import oandapyV20.endpoints.accounts as accounts
 from oandapyV20.endpoints.pricing import PricingStream
 from datetime import datetime
 from dateutil import tz
+import time
 
 def get_instruments(client, accountID):
 
@@ -18,6 +19,7 @@ def get_instruments(client, accountID):
 
 def get_signals(client):
 
+    print('getting signals')
     params          = {}
     r               = labs.Autochartist(params=params)
     client.request(r)
@@ -119,7 +121,6 @@ def predict_price(row):
     elif row['direction'] == -1:
         return row['pricehigh']
 
-
 if __name__ == '__main__':
 
     config              = json.load(open('./config/oanda_config.json'))
@@ -127,17 +128,34 @@ if __name__ == '__main__':
     access_token        = config['practice_login']['access_token']
 
     client              = API(access_token=access_token, environment="practice")
-    signals             = get_signals(client)
-    ls_instrument       = signals['instrument'].as_matrix()
+    count               = 0
+    max_iter            = 1000
 
-    stream_output       = get_streaming_price(client, accountID, ls_instrument)
-    instrument_to_ask   = stream_output[0]
-    instrument_to_bid   = stream_output[1]
+    while True:
 
-    signals['curr_ask'] = signals['instrument'].map(instrument_to_ask)
-    signals['curr_bid'] = signals['instrument'].map(instrument_to_bid)
-    signals['pred']     = signals.apply(lambda x: predict_price(x), axis=1)
+        if count > max_iter:
+            print('reached max_iter', max_iter)
+            break
 
-    signals.to_csv('./results/signals.csv', index=False)
+        count              += 1
+        hist_signals        = pd.read_csv('./results/signals.csv')
+
+        signals             = get_signals(client)
+        ls_instrument       = signals['instrument'].as_matrix()
+
+        stream_output       = get_streaming_price(client, accountID, ls_instrument)
+        instrument_to_ask   = stream_output[0]
+        instrument_to_bid   = stream_output[1]
+
+        signals['curr_ask'] = signals['instrument'].map(instrument_to_ask)
+        signals['curr_bid'] = signals['instrument'].map(instrument_to_bid)
+        signals['pred']     = signals.apply(lambda x: predict_price(x), axis=1)
+
+        signals             = pd.concat([hist_signals, signals])
+
+        signals.to_csv('./results/signals.csv', index=False)
+        print('{}) finished fetching signals'.format(count))
+
+        time.sleep(60 * 5)
 
     print('done')
