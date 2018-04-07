@@ -1,0 +1,88 @@
+# Ignore the mac-specific files in all folders
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+
+# No environment stuff
+env/
+build/
+dist/
+downloads/
+eggs/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+oanda-api-v20/
+oandapyV20-examples/
+config/
+results/
+
+**/env/
+**/build/
+**/dist/
+**/downloads/
+**/eggs/
+**/lib/
+**/lib64/
+**/parts/
+**/sdist/
+**/var/
+**/*.egg-info/
+**/.installed.cfg
+**/*.egg
+
+# Dont save any catached files
+**/__pycache__/
+__pycache__/
+
+# Cached files from Sublime Text
+._*
+**/._*
+
+# No image & results files & line_profiler results
+**/imgs
+**/results
+
+**/*.lprof
+
+# C extensions
+*.so
+**/*.so
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+**/*.manifest
+**/*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
