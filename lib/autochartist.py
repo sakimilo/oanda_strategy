@@ -8,6 +8,7 @@ from oandapyV20.endpoints.pricing import PricingStream
 from datetime import datetime
 from dateutil import tz
 import time
+from datetime import datetime as dt
 
 def get_instruments(client, accountID):
 
@@ -133,29 +134,36 @@ if __name__ == '__main__':
 
     while True:
 
-        if count > max_iter:
-            print('reached max_iter', max_iter)
-            break
+        try:
+            if count > max_iter:
+                print('reached max_iter', max_iter)
+                break
 
-        count              += 1
-        hist_signals        = pd.read_csv('./results/signals.csv')
+            count              += 1
+            hist_signals        = pd.read_csv('./results/signals.csv')
 
-        signals             = get_signals(client)
-        ls_instrument       = signals['instrument'].as_matrix()
+            signals             = get_signals(client)
+            ls_instrument       = signals['instrument'].as_matrix()
 
-        stream_output       = get_streaming_price(client, accountID, ls_instrument)
-        instrument_to_ask   = stream_output[0]
-        instrument_to_bid   = stream_output[1]
+            stream_output       = get_streaming_price(client, accountID, ls_instrument)
+            instrument_to_ask   = stream_output[0]
+            instrument_to_bid   = stream_output[1]
 
-        signals['curr_ask'] = signals['instrument'].map(instrument_to_ask)
-        signals['curr_bid'] = signals['instrument'].map(instrument_to_bid)
-        signals['pred']     = signals.apply(lambda x: predict_price(x), axis=1)
+            signals['curr_ask'] = signals['instrument'].map(instrument_to_ask)
+            signals['curr_bid'] = signals['instrument'].map(instrument_to_bid)
+            signals['pred']     = signals.apply(lambda x: predict_price(x), axis=1)
 
-        signals             = pd.concat([hist_signals, signals])
+            signals             = pd.concat([hist_signals, signals])
 
-        signals.to_csv('./results/signals.csv', index=False)
-        print('{}) finished fetching signals'.format(count))
+            signals.to_csv('./results/signals.csv', index=False)
+            print('{}) finished fetching signals'.format(count))
 
-        time.sleep(60 * 5)
+            time.sleep(60 * 5)
+
+        except Exception as e:
+
+            current_time        = dt.now().strftime('%Y-%m-%d_%H-%M-%S')
+            with open("LOG", "a") as LOG:
+                LOG.write("{}, V20Error: {}\n".format(current_time, e))
 
     print('done')
