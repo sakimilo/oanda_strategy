@@ -124,9 +124,10 @@ def predict_price(row):
 def make_datatype(df, c_int=True, c_object=True, c_float=True, c_time=True):
 
     int_cols            = ['id', 'interval', 'direction', 'length', 'completed', 'clarity', 'initialtrend', 
-                           'breakout', 'quality', 'uniformity', 'pricelow', 'pricehigh']
+                           'breakout', 'quality', 'uniformity']
     object_cols         = ['instrument', 'type', 'trendtype']
-    float_cols          = ['probability', 'pattern_percent', 'symbol_percent', 'hourofday_percent', 
+    float_cols          = ['probability', 'pricelow', 'pricehigh', 
+                           'pattern_percent', 'symbol_percent', 'hourofday_percent', 
                            'support_y0', 'support_y1', 'resistance_y0', 'resistance_y1']
     datetime_cols       = ['patternendtime', 'timefrom', 'timeto', 'support_x0', 'support_x1', 
                            'resistance_x0', 'resistance_x1']
@@ -156,6 +157,7 @@ if __name__ == '__main__':
     client              = API(access_token=access_token, environment="practice")
     count               = 0
     max_iter            = 1000
+    machine_utc_time    = False 
 
     while True:
 
@@ -191,7 +193,11 @@ if __name__ == '__main__':
 
         except Exception as e:
 
-            current_time        = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if machine_utc_time:
+                current_time    = convert_ToLocal(datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                current_time    = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
             with open("./results/errors.log", "a") as LOG:
                 LOG.write("{}, V20Error: {}\n".format(current_time, e))
 
