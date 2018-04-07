@@ -8,7 +8,6 @@ from oandapyV20.endpoints.pricing import PricingStream
 from datetime import datetime
 from dateutil import tz
 import time
-from datetime import datetime as dt
 
 def get_instruments(client, accountID):
 
@@ -122,6 +121,32 @@ def predict_price(row):
     elif row['direction'] == -1:
         return row['pricehigh']
 
+def make_datatype(df, c_int=True, c_object=True, c_float=True, c_time=True):
+
+    int_cols            = ['id', 'interval', 'direction', 'length', 'completed', 'clarity', 'initialtrend', 
+                           'breakout', 'quality', 'uniformity', 'pricelow', 'pricehigh']
+    object_cols         = ['instrument', 'type', 'trendtype']
+    float_cols          = ['probability', 'pattern_percent', 'symbol_percent', 'hourofday_percent', 
+                           'support_y0', 'support_y1', 'resistance_y0', 'resistance_y1']
+    datetime_cols       = ['patternendtime', 'timefrom', 'timeto', 'support_x0', 'support_x1', 
+                           'resistance_x0', 'resistance_x1']
+
+    if c_int:
+        df[int_cols]    = df[int_cols].astype(np.int64)
+
+    if c_object:
+        df[object_cols] = df[object_cols].astype(object)
+
+    if c_float:
+        df[float_cols]  = df[float_cols].astype(np.float64).round(3)
+
+    if c_time:
+        for timecol in datetime_cols:
+            df[timecol] = df[timecol].apply(lambda t: pd.to_datetime(t))
+            df[timecol] = df[timecol].apply(lambda t: convert_ToLocal(t))
+
+    return df
+
 if __name__ == '__main__':
 
     config              = json.load(open('./config/oanda_config.json'))
@@ -141,9 +166,15 @@ if __name__ == '__main__':
 
             count              += 1
             hist_signals        = pd.read_csv('./results/signals.csv')
+            hist_signals        = hist_signals[[c for c in hist_signals.columns if c not in \
+                                                                ['curr_ask', 'curr_bid', 'pred']]]
+            hist_signals        = make_datatype(hist_signals)
 
             signals             = get_signals(client)
+            signals             = make_datatype(signals, c_time=False)
             ls_instrument       = signals['instrument'].as_matrix()
+            signals             = pd.concat([hist_signals, signals])
+            signals             = signals.drop_duplicates()
 
             stream_output       = get_streaming_price(client, accountID, ls_instrument)
             instrument_to_ask   = stream_output[0]
@@ -153,17 +184,16 @@ if __name__ == '__main__':
             signals['curr_bid'] = signals['instrument'].map(instrument_to_bid)
             signals['pred']     = signals.apply(lambda x: predict_price(x), axis=1)
 
-            signals             = pd.concat([hist_signals, signals])
-
             signals.to_csv('./results/signals.csv', index=False)
-            print('{}) finished fetching signals'.format(count))
+            print('{}) finished fetching signals, shape: {}'.format(count, signals.shape))
 
             time.sleep(60 * 5)
 
         except Exception as e:
 
-            current_time        = dt.now().strftime('%Y-%m-%d_%H-%M-%S')
-            with open("LOG", "a") as LOG:
+            current_time        = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            with open("./results/errors.log", "a") as LOG:
                 LOG.write("{}, V20Error: {}\n".format(current_time, e))
 
     print('done')
+    
