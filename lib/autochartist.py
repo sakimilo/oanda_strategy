@@ -122,7 +122,7 @@ def predict_price(row):
 
 if __name__ == '__main__':
 
-    config              = json.load(open('../config/oanda_config.json'))
+    config              = json.load(open('./config/oanda_config.json'))
     accountID           = config['practice_login']['account_id']
     access_token        = config['practice_login']['access_token']
 
@@ -138,6 +138,6 @@ if __name__ == '__main__':
     signals['curr_bid'] = signals['instrument'].map(instrument_to_bid)
     signals['pred']     = signals.apply(lambda x: predict_price(x), axis=1)
 
-    signals.to_csv('signals.csv', index=False)
+    signals.to_csv('./results/signals.csv', index=False)
 
     print('done')
