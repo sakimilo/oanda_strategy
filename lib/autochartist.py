@@ -157,7 +157,7 @@ if __name__ == '__main__':
 
     client              = API(access_token=access_token, environment="practice")
     count               = 0
-    max_iter            = 1000
+    max_iter            = 10000
 
     while True:
 
