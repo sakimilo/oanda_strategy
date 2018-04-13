@@ -1,62 +1,74 @@
+import json
+from oandapyV20 import API
+from oandapyV20.exceptions import V20Error
+import oandapyV20.endpoints.instruments as instruments
+from oandapyV20.definitions.instruments import CandlestickGranularity
 import pandas as pd
 import numpy as np
-import oandapy as opy
+from datetime import datetime
+from dateutil import tz
 
-class MomentumTrader(opy.Streamer):
+config     = json.load(open('./config/oanda_config.json'))
 
-    def __init__(self, momentum, *args, **kwargs):
+class PriceHist(object):
 
-        opy.Streamer.__init__(self, *args, **kwargs)
-        self.ticks      = 0
-        self.position   = 0
-        self.df         = pd.DataFrame()
-        self.momentum   = momentum
-        self.units      = 100000
+    def __init__(self, instruments_i):
 
-    def create_order(self, side, units):
+        self.config         = config
+        self.accountID      = self.config['practice_login']['account_id']
+        self.access_token   = self.config['practice_login']['access_token']
+        self.params         = self.config['candlestick_params']
+        self.api            = API(access_token=self.access_token, environment="practice")
+        self.instrument     = instruments_i
 
-        order = opy.create_order(config['oanda']['account_id'], 
-            instrument='EUR_USD', units=units, side=side,
-            type='market')
-        print('\n', order)
+        if self.params['count']: del self.params['count']
 
-    def on_success(self, data):
+    def convert_ToLocal(self, datetime_utc):
 
-        self.ticks += 1
-        # print(self.ticks, end=', ')
-        # appends the new tick data to the DataFrame object
-        self.df = self.df.append(pd.DataFrame(data['tick'],
-                                 index=[data['tick']['time']]))
-        # transforms the time information to a DatetimeIndex object
-        self.df.index = pd.DatetimeIndex(self.df['time'])
-        # resamples the data set to a new, homogeneous interval
-        dfr = self.df.resample('5s').last()
-        # calculates the log returns
-        dfr['returns'] = np.log(dfr['ask'] / dfr['ask'].shift(1))
-        # derives the positioning according to the momentum strategy
-        dfr['position'] = np.sign(dfr['returns'].rolling( 
-                                      self.momentum).mean())
+        from_zone           = tz.gettz('UTC')
+        to_zone             = tz.gettz('Singapore')
+        datetime_utc        = datetime_utc.replace(tzinfo=from_zone)
+        local               = datetime_utc.astimezone(to_zone)
+        
+        return local
 
-        if dfr['position'].ix[-1] == 1:
-            # go long
-            if self.position == 0:
-                self.create_order('buy', self.units)
-            elif self.position == -1:
-                self.create_order('buy', self.units * 2)
-            self.position = 1
+    def make_datatype(self, df, c_int=True, c_object=True, c_float=True, c_time=True):
 
-        elif dfr['position'].ix[-1] == -1:
-            # go short
-            if self.position == 0:
-                self.create_order('sell', self.units)
-            elif self.position == 1:
-                self.create_order('sell', self.units * 2)
-            self.position = -1
+        int_cols            = ['volume']
+        object_cols         = []
+        float_cols          = ['open', 'high', 'low', 'close']
+        datetime_cols       = ['time']
 
-        if self.ticks == 250:
-            # close out the position
-            if self.position == 1:
-                self.create_order('sell', self.units)
-            elif self.position == -1:
-                self.create_order('buy', self.units)
-            self.disconnect()
+        if c_int:
+            df[int_cols]    = df[int_cols].astype(np.int64)
+
+        if c_object:
+            df[object_cols] = df[object_cols].astype(object)
+
+        if c_float:
+            df[float_cols]  = df[float_cols].astype(np.float64).round(3)
+
+        if c_time:
+            for timecol in datetime_cols:
+                df[timecol] = df[timecol].apply(lambda t: pd.to_datetime(t))
+                df[timecol] = df[timecol].apply(lambda t: self.convert_ToLocal(t))
+
+        return df
+
+    def get_highlow(self):
+
+        r                   = instruments.InstrumentsCandles(instrument=self.instrument, params=self.params)
+        rv                  = self.api.request(r)
+
+        data                = pd.DataFrame(rv['candles'])
+        data['open']        = data.apply(lambda x: x['mid']['o'], axis=1)
+        data['high']        = data.apply(lambda x: x['mid']['h'], axis=1)
+        data['low']         = data.apply(lambda x: x['mid']['l'], axis=1)
+        data['close']       = data.apply(lambda x: x['mid']['c'], axis=1)
+        data                = data[['time', 'volume', 'open', 'high', 'low', 'close']]
+        data                = self.make_datatype(data)
+
+        return data['high'].max(), data['low'].min()
+
+
+

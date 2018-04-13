@@ -20,8 +20,12 @@ def get_instruments(client, accountID):
 def get_signals(client):
 
     print('getting signals')
+
+    # params          = {}
+    # r               = labs.Autochartist(params=params)
+
     params          = {}
-    r               = labs.Autochartist(params=params)
+    r               = labs.Autochartist()
     client.request(r)
     rv              = r.response
     signals         = pd.DataFrame(rv['signals'])
